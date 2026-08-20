@@ -22,6 +22,7 @@ class Response:
     status: int
     headers: dict[str, str] = field(default_factory=dict)
     body: Any = None
+    duration_ms: float | None = None
 
 
 @dataclass(frozen=True)

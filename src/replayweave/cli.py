@@ -10,6 +10,7 @@ import click
 
 from .bundle import load_bundle, save_bundle
 from .diff import render_diff, semantic_diff
+from .importers import from_har, from_jsonl
 from .replay import FixtureTransport, HttpTransport, replay_interaction
 from .sanitize import sanitize_bundle
 
@@ -17,6 +18,24 @@ from .sanitize import sanitize_bundle
 @click.group()
 def main() -> None:
     """Capture, sanitize, replay, and gate distributed workflow behavior."""
+
+
+@main.command("import")
+@click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("destination", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--format", "input_format", type=click.Choice(["har", "jsonl"]), default=None)
+@click.option("--name", default=None, help="Bundle name; defaults to the input filename.")
+def import_bundle(
+    source: Path, destination: Path, input_format: str | None, name: str | None
+) -> None:
+    """Import SOURCE HAR or JSONL into a portable bundle."""
+    selected = input_format or ("har" if source.suffix.lower() == ".har" else "jsonl")
+    try:
+        bundle = from_har(source, name) if selected == "har" else from_jsonl(source, name)
+        save_bundle(bundle, destination)
+    except (OSError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"imported {len(bundle.interactions)} interaction(s) -> {destination}")
 
 
 @main.command()
@@ -46,19 +65,21 @@ def sanitize(
 @click.argument("observed", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option("--ignore-path", multiple=True)
 @click.option("--numeric-tolerance", type=float, default=0.0, show_default=True)
+@click.option("--unordered-path", multiple=True, help="Array path whose order should be ignored.")
 @click.option("--json-output", is_flag=True)
 def diff(
     baseline: Path,
     observed: Path,
     ignore_path: tuple[str, ...],
     numeric_tolerance: float,
+    unordered_path: tuple[str, ...],
     json_output: bool,
 ) -> None:
     """Compare two JSON documents or bundles at a semantic level."""
     try:
         expected: Any = json.loads(baseline.read_text(encoding="utf-8"))
         actual: Any = json.loads(observed.read_text(encoding="utf-8"))
-        result = semantic_diff(expected, actual, ignore_path, numeric_tolerance)
+        result = semantic_diff(expected, actual, ignore_path, numeric_tolerance, unordered_path)
     except (OSError, json.JSONDecodeError) as exc:
         raise click.ClickException(f"cannot compare inputs: {exc}") from exc
     if json_output:

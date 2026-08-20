@@ -1,7 +1,7 @@
 # ReplayWeave
 
 [![CI](https://github.com/ateeqdesktop-dot/replayweave/actions/workflows/ci.yml/badge.svg)](https://github.com/ateeqdesktop-dot/replayweave/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 **Capture behavior once. Replay it safely. Gate regressions before production.**
@@ -30,14 +30,19 @@ python -m venv .venv
 . .venv/bin/activate
 pip install -e '.[dev]'
 
+# Import a sanitized, reviewable bundle from HAR or normalized JSONL.
+replayweave import capture.har capture.bundle.json --format har
+
 # Validate that the example bundle is safe.
 replayweave check examples/checkout.bundle.json
 
 # Replay entirely offline against the recorded fixture.
 replayweave replay examples/checkout.bundle.json --mode fixture
 
-# Compare two JSON documents and ignore a volatile field.
-replayweave diff baseline.json observed.json --ignore-path request_id
+# Compare two JSON documents, ignore a volatile field, and treat an array as unordered.
+replayweave diff baseline.json observed.json \\
+  --ignore-path request_id \\
+  --unordered-path items
 ```
 
 The fixture command should print:
@@ -76,7 +81,7 @@ replayweave check safe.bundle.json
 
 ## CI behavior
 
-`replayweave replay` returns exit code `0` only when every interaction is semantically equivalent. Missing fixtures, transport errors, status changes, and JSON differences are non-zero. Use `--json-output` for machine-readable reports and `--ignore-path` or `--numeric-tolerance` only when the rule is intentional and reviewed.
+`replayweave replay` returns exit code `0` only when every interaction is semantically equivalent. Missing fixtures, transport errors, status changes, and JSON differences are non-zero. Use `--json-output` for machine-readable reports and `--ignore-path`, `--unordered-path`, or `--numeric-tolerance` only when the rule is intentional and reviewed. Imported absolute URLs are normalized to origin-relative paths, and live HTTP replay blocks mutating methods and redirects by default.
 
 ## Architecture
 
@@ -84,7 +89,7 @@ The core has four deliberately narrow boundaries: the bundle layer owns schema a
 
 ## Roadmap
 
-The next release will add a capture middleware for FastAPI/httpx, an official pytest plugin, JSON Schema path matching, and OpenTelemetry span import. Later milestones can add gRPC and queue adapters, signed bundles, parallel scenario replay, and optional local semantic policies. A hosted service is explicitly out of scope for the core project.
+The next release will add a capture middleware for FastAPI/httpx, an official pytest plugin, signed bundles, and OpenTelemetry GenAI span import. The current release already supports HAR/JSONL import, wildcard ignore paths, unordered arrays, and bounded semantic differences. Later milestones can add gRPC and queue adapters, signed bundles, parallel scenario replay, and optional local semantic policies. A hosted service is explicitly out of scope for the core project.
 
 ## Contributing
 

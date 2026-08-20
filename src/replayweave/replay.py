@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any, Protocol
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
@@ -30,22 +32,49 @@ class FixtureTransport:
 
 
 class HttpTransport:
-    def __init__(self, timeout: float = 10.0) -> None:
-        self._client = httpx.Client(timeout=timeout)
+    def __init__(
+        self,
+        timeout: float = 10.0,
+        origin: str | None = None,
+        allow_unsafe_methods: bool = False,
+    ) -> None:
+        self._client = httpx.Client(timeout=timeout, follow_redirects=False)
+        self._origin = origin.rstrip("/") + "/" if origin else None
+        self._allow_unsafe_methods = allow_unsafe_methods
 
     def send(self, request: Request) -> Response:
+        method = request.method.upper()
+        if not self._allow_unsafe_methods and method not in {"GET", "HEAD", "OPTIONS"}:
+            raise PermissionError(f"unsafe method blocked: {method}")
+        target = request.url
+        if self._origin:
+            parsed = urlsplit(target)
+            if parsed.scheme or parsed.netloc:
+                raise ValueError("origin transport accepts only origin-relative request URLs")
+            target = urljoin(self._origin, target.lstrip("/"))
+        started = perf_counter()
         response = self._client.request(
-            request.method,
-            request.url,
-            headers=request.headers,
+            method,
+            target,
+            headers={
+                key: value
+                for key, value in request.headers.items()
+                if key.lower() not in {"host", "content-length", "cookie", "authorization"}
+            },
             json=request.body if isinstance(request.body, (dict, list)) else None,
             content=request.body if isinstance(request.body, str) else None,
         )
+        duration_ms = (perf_counter() - started) * 1000
         try:
             body: Any = response.json()
         except ValueError:
             body = response.text
-        return Response(status=response.status_code, headers=dict(response.headers), body=body)
+        return Response(
+            status=response.status_code,
+            headers=dict(response.headers),
+            body=body,
+            duration_ms=duration_ms,
+        )
 
     def close(self) -> None:
         self._client.close()
@@ -64,6 +93,7 @@ def replay_interaction(
     transport: Transport,
     ignore_paths: tuple[str, ...] = (),
     numeric_tolerance: float = 0.0,
+    unordered_paths: tuple[str, ...] = (),
 ) -> ReplayResult:
     try:
         actual = transport.send(interaction.request)
@@ -78,5 +108,11 @@ def replay_interaction(
             diff=DiffResult("changed", ()),
             error=f"status changed: expected {interaction.response.status}, got {actual.status}",
         )
-    result = semantic_diff(interaction.response.body, actual.body, ignore_paths, numeric_tolerance)
+    result = semantic_diff(
+        interaction.response.body,
+        actual.body,
+        ignore_paths,
+        numeric_tolerance,
+        unordered_paths,
+    )
     return ReplayResult(interaction.id, result.outcome, result)

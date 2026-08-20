@@ -67,3 +67,26 @@ def test_cli_diff_returns_nonzero_for_change(tmp_path):
     )
     assert result.exit_code == 1
     assert "changed" in result.output
+
+
+def test_cli_import_jsonl_and_unordered_diff(tmp_path):
+    capture = tmp_path / "capture.jsonl"
+    capture.write_text(
+        '{"id":"one","method":"GET","url":"https://prod.test/items",'
+        '"response":{"status":200,"body":{"items":[2,1]}}}\n',
+        encoding="utf-8",
+    )
+    destination = tmp_path / "capture.bundle.json"
+    imported = CliRunner().invoke(
+        main, ["import", str(capture), str(destination), "--format", "jsonl"]
+    )
+    assert imported.exit_code == 0, imported.output
+    imported_bundle = json.loads(destination.read_text())
+    assert imported_bundle["interactions"][0]["request"]["url"] == "/items"
+
+    baseline = write_json(tmp_path, "baseline.json", {"items": [1, 2]})
+    observed = write_json(tmp_path, "observed.json", {"items": [2, 1]})
+    diffed = CliRunner().invoke(
+        main, ["diff", str(baseline), str(observed), "--unordered-path", "items"]
+    )
+    assert diffed.exit_code == 0, diffed.output

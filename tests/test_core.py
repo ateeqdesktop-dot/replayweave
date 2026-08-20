@@ -98,3 +98,43 @@ def test_bundle_rejects_duplicate_ids() -> None:
         assert "duplicate" in str(exc)
     else:
         raise AssertionError("duplicate IDs must be rejected")
+
+
+def test_semantic_diff_supports_wildcards_and_unordered_arrays() -> None:
+    result = semantic_diff(
+        {"items": [{"id": 1, "generated": "a"}, {"id": 2, "generated": "b"}]},
+        {"items": [{"id": 2, "generated": "x"}, {"id": 1, "generated": "y"}]},
+        ("items.*.generated",),
+        unordered_paths=("items",),
+    )
+    assert result.equivalent
+
+
+def test_importers_normalize_absolute_urls(tmp_path) -> None:
+    from replayweave import from_jsonl
+
+    source = tmp_path / "capture.jsonl"
+    source.write_text(
+        '{"id":"one","method":"GET","url":"https://prod.test/api/items?q=1",'
+        '"response":{"status":200,"body":{"ok":true}}}\n',
+        encoding="utf-8",
+    )
+    bundle = from_jsonl(source)
+    assert bundle.interactions[0].request.url == "/api/items?q=1"
+    assert bundle.interactions[0].response.status == 200
+
+
+def test_http_transport_blocks_mutating_methods() -> None:
+    from replayweave import HttpTransport
+
+    transport = HttpTransport(origin="http://127.0.0.1:1")
+    try:
+        from replayweave import Request
+
+        transport.send(Request("POST", "/write", body={"x": 1}))
+    except Exception as exc:
+        assert "unsafe method blocked" in str(exc)
+    else:
+        raise AssertionError("mutating method unexpectedly ran")
+    finally:
+        transport.close()
