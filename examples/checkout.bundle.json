@@ -1,0 +1,23 @@
+{
+  "bundle_id": "demo-checkout-v1",
+  "interactions": [
+    {
+      "id": "checkout-1",
+      "metadata": {"scenario": "successful-checkout"},
+      "request": {
+        "body": {"items": [{"sku": "book-1", "quantity": 1}]},
+        "headers": {"Content-Type": "application/json"},
+        "method": "POST",
+        "url": "https://example.test/checkout"
+      },
+      "response": {
+        "body": {"currency": "USD", "ok": true, "request_id": "fixture-123", "total": 29.99},
+        "headers": {"Content-Type": "application/json"},
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {"captured_by": "replayweave-example"},
+  "name": "checkout-happy-path",
+  "schema_version": "1.0"
+}
