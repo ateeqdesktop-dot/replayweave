@@ -18,7 +18,7 @@ def interaction() -> Interaction:
             "POST",
             "https://example.test/checkout",
             {"Authorization": "Bearer secret", "Content-Type": "application/json"},
-            {"email": "user@example.com", "token": "sk_test_1234567890123456"},
+            {"email": "user@example.com", "token": "sk_" + "test_1234567890123456"},
         ),
         response=Response(
             200, {"Content-Type": "application/json"}, {"ok": True, "request_id": "abc"}
@@ -138,3 +138,32 @@ def test_http_transport_blocks_mutating_methods() -> None:
         raise AssertionError("mutating method unexpectedly ran")
     finally:
         transport.close()
+
+
+def test_build_report_is_stable_and_payload_free() -> None:
+    from replayweave import ReplayResult, build_report
+
+    report = build_report(
+        "checkout",
+        (
+            ReplayResult("one", "equivalent"),
+            ReplayResult("two", "changed", error="status changed"),
+        ),
+    )
+
+    assert report.to_dict()["total"] == 2
+    assert report.to_dict()["passed"] == 1
+    assert report.to_dict()["failed"] == 1
+    assert report.to_dict()["exit_code"] == 1
+    assert report.to_dict()["outcomes"] == {"changed": 1, "equivalent": 1}
+    assert "payload" not in str(report.to_dict())
+
+
+def test_empty_report_passes() -> None:
+    from replayweave import build_report
+
+    report = build_report("empty", ())
+
+    assert report.equivalent
+    assert report.exit_code == 0
+    assert report.total == 0

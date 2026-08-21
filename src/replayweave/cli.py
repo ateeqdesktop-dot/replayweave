@@ -12,6 +12,7 @@ from .bundle import load_bundle, save_bundle
 from .diff import render_diff, semantic_diff
 from .importers import from_har, from_jsonl
 from .replay import FixtureTransport, HttpTransport, replay_interaction
+from .report import build_report
 from .sanitize import sanitize_bundle
 
 
@@ -105,12 +106,14 @@ def diff(
 )
 @click.option("--ignore-path", multiple=True)
 @click.option("--numeric-tolerance", type=float, default=0.0, show_default=True)
+@click.option("--unordered-path", multiple=True, help="Array path whose order should be ignored.")
 @click.option("--json-output", is_flag=True)
 def replay(
     bundle_path: Path,
     mode: str,
     ignore_path: tuple[str, ...],
     numeric_tolerance: float,
+    unordered_path: tuple[str, ...],
     json_output: bool,
 ) -> None:
     """Replay a bundle and gate on semantic regressions."""
@@ -118,7 +121,7 @@ def replay(
         bundle = load_bundle(bundle_path)
         transport = FixtureTransport(bundle.interactions) if mode == "fixture" else HttpTransport()
         results = [
-            replay_interaction(item, transport, ignore_path, numeric_tolerance)
+            replay_interaction(item, transport, ignore_path, numeric_tolerance, unordered_path)
             for item in bundle.interactions
         ]
     except ValueError as exc:
@@ -126,20 +129,16 @@ def replay(
     finally:
         if mode == "http" and "transport" in locals() and isinstance(transport, HttpTransport):
             transport.close()
-    failed = [item for item in results if item.status not in {"equivalent"}]
+    report = build_report(bundle.name, results)
     if json_output:
-        click.echo(
-            json.dumps(
-                {"bundle": bundle.name, "results": [item.__dict__ for item in results]},
-                default=lambda x: x.__dict__,
-            )
-        )
+        click.echo(json.dumps(report.to_dict(), default=str, sort_keys=True))
     else:
         for item in results:
             suffix = f" ({item.error})" if item.error else ""
             click.echo(f"{item.interaction_id}: {item.status}{suffix}")
-    if failed:
-        raise click.exceptions.Exit(1)
+        click.echo(f"summary: {report.passed}/{report.total} equivalent")
+    if not report.equivalent:
+        raise click.exceptions.Exit(report.exit_code)
 
 
 @main.command()

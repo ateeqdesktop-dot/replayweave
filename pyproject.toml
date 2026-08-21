@@ -4,8 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "replayweave"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local-first replay bundles and semantic regression gates for distributed workflows"
+keywords = ["replay testing", "regression testing", "semantic diff", "developer tools", "ci"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

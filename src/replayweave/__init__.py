@@ -5,6 +5,7 @@ from .diff import Difference, DiffResult, semantic_diff
 from .importers import from_har, from_jsonl, relative_url
 from .models import Interaction, ReplayBundle, Request, Response
 from .replay import FixtureTransport, HttpTransport, ReplayResult, replay_interaction
+from .report import ReplayReport, build_report
 from .sanitize import sanitize_bundle, scan_for_secrets
 
 __all__ = [
@@ -14,9 +15,11 @@ __all__ = [
     "HttpTransport",
     "Interaction",
     "ReplayBundle",
+    "ReplayReport",
     "ReplayResult",
     "Request",
     "Response",
+    "build_report",
     "bundle_from_interactions",
     "from_har",
     "from_jsonl",
@@ -30,4 +33,4 @@ __all__ = [
     "semantic_diff",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

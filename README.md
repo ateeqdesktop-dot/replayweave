@@ -39,17 +39,23 @@ replayweave check examples/checkout.bundle.json
 # Replay entirely offline against the recorded fixture.
 replayweave replay examples/checkout.bundle.json --mode fixture
 
+# Emit a stable machine-readable CI report without response payloads.
+replayweave replay examples/checkout.bundle.json --json-output
+
 # Compare two JSON documents, ignore a volatile field, and treat an array as unordered.
 replayweave diff baseline.json observed.json \\
   --ignore-path request_id \\
   --unordered-path items
 ```
 
-The fixture command should print:
+The fixture command prints an interaction result and a deterministic aggregate summary:
 
 ```text
 checkout-1: equivalent
+summary: 1/1 equivalent
 ```
+
+With `--json-output`, the command emits a stable report containing `total`, `passed`, `failed`, `outcomes`, per-interaction statuses, `equivalent`, and `exit_code`. Response payloads are never copied into the report, making it suitable for CI artifacts without turning logs into a data-exfiltration channel.
 
 ## Bundle model
 
@@ -81,7 +87,11 @@ replayweave check safe.bundle.json
 
 ## CI behavior
 
-`replayweave replay` returns exit code `0` only when every interaction is semantically equivalent. Missing fixtures, transport errors, status changes, and JSON differences are non-zero. Use `--json-output` for machine-readable reports and `--ignore-path`, `--unordered-path`, or `--numeric-tolerance` only when the rule is intentional and reviewed. Imported absolute URLs are normalized to origin-relative paths, and live HTTP replay blocks mutating methods and redirects by default.
+`replayweave replay` returns exit code `0` only when every interaction is semantically equivalent. Missing fixtures, transport errors, status changes, and JSON differences are non-zero. Use `--json-output` for a stable aggregate report and `--ignore-path`, `--unordered-path`, or `--numeric-tolerance` only when the rule is intentional and reviewed. Imported absolute URLs are normalized to origin-relative paths, and live HTTP replay blocks mutating methods and redirects by default.
+
+## v0.3 release focus
+
+The v0.3 release strengthens ReplayWeave as a CI primitive with an aggregate `ReplayReport` library contract, deterministic outcome counts, stable exit-code metadata, unordered-array policy support in replay, and package discovery metadata. The design remains artifact-first and local-only; capture adapters, OpenTelemetry import, and a pytest plugin remain explicit extension points rather than hidden runtime dependencies.
 
 ## Architecture
 
