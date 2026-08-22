@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "replayweave"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local-first replay bundles and semantic regression gates for distributed workflows"
 keywords = ["replay testing", "regression testing", "semantic diff", "developer tools", "ci"]
 classifiers = [
@@ -25,6 +25,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+pytest = ["pytest>=8,<9"]
 dev = [
   "pytest>=8,<9",
   "pytest-cov>=5,<6",
@@ -35,6 +36,9 @@ dev = [
 
 [project.scripts]
 replayweave = "replayweave.cli:main"
+
+[project.entry-points.pytest11]
+replayweave = "replayweave.pytest_plugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/replayweave"]

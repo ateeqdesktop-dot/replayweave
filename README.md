@@ -85,6 +85,31 @@ replayweave sanitize raw.bundle.json safe.bundle.json \
 replayweave check safe.bundle.json
 ```
 
+## Pytest integration
+
+Install the optional integration when a project wants bundle assertions inside its existing test suite:
+
+```bash
+pip install 'replayweave[pytest]'
+```
+
+Then use the stateless fixture in a normal test. It always replays offline against the bundle’s recorded responses:
+
+```python
+import pytest
+
+
+@pytest.mark.replayweave
+def test_checkout_regression(replayweave):
+    report = replayweave.assert_bundle(
+        "examples/checkout.bundle.json",
+        ignore_paths=("request_id",),
+    )
+    assert report.passed == report.total
+```
+
+The plugin is intentionally optional. The core package remains usable without pytest, while teams that already own a pytest suite get a small, composable integration instead of a second test runner.
+
 ## CI behavior
 
 `replayweave replay` returns exit code `0` only when every interaction is semantically equivalent. Missing fixtures, transport errors, status changes, and JSON differences are non-zero. Use `--json-output` for a stable aggregate report and `--ignore-path`, `--unordered-path`, or `--numeric-tolerance` only when the rule is intentional and reviewed. Imported absolute URLs are normalized to origin-relative paths, and live HTTP replay blocks mutating methods and redirects by default.

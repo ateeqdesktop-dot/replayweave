@@ -2,6 +2,18 @@
 
 All notable changes to ReplayWeave are documented here.
 
+## [0.4.0] - 2026-08-21
+
+### Added
+
+- Added an optional pytest plugin, enabled by installing `replayweave[pytest]`.
+- Added the `replayweave` fixture with `run()` and `assert_bundle()` helpers.
+- Kept pytest outside the core runtime dependency set.
+
+### Security
+
+- Pytest assertions reuse the offline fixture transport and never send bundle requests to a network target.
+
 ## [0.3.0] - 2026-08-21
 
 ### Added

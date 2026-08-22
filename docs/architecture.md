@@ -67,7 +67,7 @@ The core must run on Python 3.11+, have no runtime service dependency, be determ
         +---------------+       +----------------+
 ```
 
-The bundle layer owns serialization and validation. The sanitizer transforms an input bundle into a safe bundle and records redaction metadata without retaining original secret values. The replay core consumes an abstract `Transport` protocol, making fixture replay and live-target replay interchangeable. The diff engine compares normalized response envelopes and emits structured outcomes consumed by the CLI and CI.
+The bundle layer owns serialization and validation. The sanitizer transforms an input bundle into a safe bundle and records redaction metadata without retaining original secret values. The replay core consumes an abstract `Transport` protocol, making fixture replay and live-target replay interchangeable. The diff engine compares normalized response envelopes and emits structured outcomes consumed by the CLI and CI. The optional pytest plugin is a thin facade over the same fixture transport and report contract; it owns no state, performs no network calls, and does not fork a second execution model.
 
 ## Data flow
 
@@ -96,6 +96,10 @@ The loader streams JSONL records where possible and indexes request keys for O(1
 ## Extensibility
 
 Transport adapters implement a narrow protocol. Normalizers and diff strategies are registered by name and receive typed envelopes. The schema uses additive versioning and rejects unknown major versions. The Python API exposes stable modules for bundle, sanitize, replay, and diff while internal helpers remain private.
+
+## Pytest integration boundary
+
+The pytest entry point is optional and isolated from the core runtime dependencies. Its `replayweave` fixture exposes `run()` for inspection and `assert_bundle()` for a failing test assertion. Both methods use the bundle's own recorded responses through `FixtureTransport`, which makes the integration safe for offline CI and straightforward to test. The plugin is intentionally not a collection-time magic feature: test authors opt in through a normal fixture call, keeping discovery predictable.
 
 ## Release quality gates
 
